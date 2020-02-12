@@ -77,7 +77,7 @@ impl Syncer {
     }
 }
 
-pub trait TerminalGame {
+pub trait TerminalGameDynamic {
     fn init(&mut self) {}
     fn input(&mut self, e: Event);
     fn update(&mut self);
@@ -143,6 +143,56 @@ pub trait TerminalGame {
         }
         writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
         stdout.flush().unwrap();
+    }
+}
+
+pub trait TerminalGameStatic {
+    fn init(&mut self) {}
+    fn update(&mut self, e: Event, buff: &mut Vec<u8>);
+    fn running(&self) -> bool;
+    fn start(&mut self) {
+        let mut stdout = AlternateScreen::from(cursor::HideCursor::from(
+            MouseTerminal::from(std::io::stdout().into_raw_mode().unwrap()),
+        ));
+        let stdin = std::io::stdin();
+        //
+        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
+        //
+        self.init();
+        //
+        let buff = &mut Vec::new();
+        //
+        let mut mouse = false;
+        //
+        for e in stdin.events() {
+            if !self.running() {
+                break;
+            }
+            if let Ok(e) = e {
+                if let Some(e) = match e {
+                    Event::Mouse(MouseEvent::Press(_, _, _)) => {
+                        mouse = true;
+                        Some(e)
+                    }
+                    Event::Mouse(MouseEvent::Release(_, _)) => {
+                        mouse = false;
+                        Some(e)
+                    }
+                    _ => {
+                        if mouse {
+                            None
+                        } else {
+                            Some(e)
+                        }
+                    }
+                } {
+                    self.update(e, buff);
+                    stdout.write_all(buff).unwrap();
+                    buff.clear();
+                    stdout.flush().unwrap();
+                }
+            }
+        }
     }
 }
 
