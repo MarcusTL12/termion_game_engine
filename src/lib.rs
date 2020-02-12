@@ -13,6 +13,10 @@ use termion::{
     screen::AlternateScreen,
 };
 
+pub fn dostuff() {
+    println!("Heisann terminalting");
+}
+
 pub fn col2fg_str<T: color::Color>(col: T) -> Vec<u8> {
     let mut ret = Vec::new();
     write!(ret, "{}", color::Fg(col)).unwrap();
