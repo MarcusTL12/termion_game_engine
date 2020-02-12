@@ -6,12 +6,24 @@ use std::{
 };
 
 use termion::{
-    self, clear, cursor,
+    self, clear, color, cursor,
     event::{Event, MouseEvent},
     input::{MouseTerminal, TermRead},
     raw::IntoRawMode,
     screen::AlternateScreen,
 };
+
+pub fn col2fg_str<T: color::Color>(col: T) -> Vec<u8> {
+    let mut ret = Vec::new();
+    write!(ret, "{}", color::Fg(col)).unwrap();
+    ret
+}
+
+pub fn col2bg_str<T: color::Color>(col: T) -> Vec<u8> {
+    let mut ret = Vec::new();
+    write!(ret, "{}", color::Bg(col)).unwrap();
+    ret
+}
 
 pub struct EveryNSync {
     interval: Duration,
