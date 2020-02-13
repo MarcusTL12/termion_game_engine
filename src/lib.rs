@@ -171,9 +171,6 @@ pub trait TerminalGameStatic {
         let mut mouse = false;
         //
         for e in stdin.events() {
-            if !self.running() {
-                break;
-            }
             if let Ok(e) = e {
                 if let Some(e) = match e {
                     Event::Mouse(MouseEvent::Press(_, _, _)) => {
@@ -197,6 +194,9 @@ pub trait TerminalGameStatic {
                     buff.clear();
                     stdout.flush().unwrap();
                 }
+            }
+            if !self.running() {
+                break;
             }
         }
     }
