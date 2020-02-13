@@ -37,9 +37,6 @@ impl EveryNSync {
             prevtime: Instant::now(),
         }
     }
-    pub fn from_secs_f64(interval: f64) -> Self {
-        Self::new(Duration::from_secs_f64(interval))
-    }
     pub fn run(&mut self) -> bool {
         if self.prevtime.elapsed() > self.interval {
             self.prevtime += self.interval;
@@ -47,6 +44,12 @@ impl EveryNSync {
         } else {
             false
         }
+    }
+}
+
+impl From<f64> for EveryNSync {
+    fn from(interval: f64) -> Self {
+        Self::new(Duration::from_secs_f64(interval))
     }
 }
 
@@ -62,11 +65,8 @@ impl Syncer {
             prevtime: Instant::now(),
         }
     }
-    fn from_secs_f64(interval: f64) -> Self {
-        Self::new(Duration::from_secs_f64(interval))
-    }
     fn from_fps(fps: f64) -> Self {
-        Self::from_secs_f64(1f64 / fps)
+        Self::from(1f64 / fps)
     }
     fn sync(&mut self) {
         let dt = self.prevtime.elapsed();
@@ -74,6 +74,12 @@ impl Syncer {
             thread::sleep(self.interval - dt);
         }
         self.prevtime += self.interval;
+    }
+}
+
+impl From<f64> for Syncer {
+    fn from(interval: f64) -> Self {
+        Self::new(Duration::from_secs_f64(interval))
     }
 }
 
