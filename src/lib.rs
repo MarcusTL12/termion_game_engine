@@ -167,6 +167,7 @@ pub trait TerminalGameStatic {
         self.init();
         //
         let buff = &mut Vec::new();
+        self.update(Event::Unsupported(Vec::new()), buff);
         //
         let mut mouse = false;
         //
