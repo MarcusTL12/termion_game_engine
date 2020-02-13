@@ -207,4 +207,3 @@ pub trait GameObject {
     fn update(&mut self) {}
     fn render(&mut self, _: &mut Vec<u8>) {}
 }
-
