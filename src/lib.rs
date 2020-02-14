@@ -214,8 +214,10 @@ pub trait TerminalGameStatic {
             Ok(())
         };
         if let Err(e) = f() {
-            stdout.flush()?;
+            drop(stdout);
             eprintln!("{}", e);
+        } else {
+            eprintln!("Hei fra static game!");
         }
         Ok(())
     }
