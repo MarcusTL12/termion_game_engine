@@ -163,10 +163,10 @@ pub trait TerminalGameStatic {
     ) -> Result<(), Box<dyn Error>>;
     fn running(&self) -> bool;
     fn start(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut stdout = AlternateScreen::from(cursor::HideCursor::from(
-            MouseTerminal::from(std::io::stdout().into_raw_mode()?),
-        ));
         let mut f = || -> Result<(), Box<dyn Error>> {
+            let mut stdout = AlternateScreen::from(cursor::HideCursor::from(
+                MouseTerminal::from(std::io::stdout().into_raw_mode()?),
+            ));
             let stdin = std::io::stdin();
             //
             writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
@@ -214,7 +214,6 @@ pub trait TerminalGameStatic {
             Ok(())
         };
         if let Err(e) = f() {
-            drop(stdout);
             eprintln!("{}", e);
         } else {
             eprintln!("Hei fra static game!");
