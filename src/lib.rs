@@ -166,49 +166,56 @@ pub trait TerminalGameStatic {
         let mut stdout = AlternateScreen::from(cursor::HideCursor::from(
             MouseTerminal::from(std::io::stdout().into_raw_mode()?),
         ));
-        let stdin = std::io::stdin();
-        //
-        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
-        //
-        self.init();
-        //
-        let buff = &mut Vec::new();
-        //
-        self.update(Event::Unsupported(Vec::new()), buff)?;
-        stdout.write_all(buff)?;
-        buff.clear();
-        stdout.flush()?;
-        //
-        let mut mouse = false;
-        //
-        for e in stdin.events() {
-            if let Ok(e) = e {
-                if let Some(e) = match e {
-                    Event::Mouse(MouseEvent::Press(_, _, _)) => {
-                        mouse = true;
-                        Some(e)
-                    }
-                    Event::Mouse(MouseEvent::Release(_, _)) => {
-                        mouse = false;
-                        Some(e)
-                    }
-                    _ => {
-                        if mouse {
-                            None
-                        } else {
+        let mut f = || -> Result<(), Box<dyn Error>> {
+            let stdin = std::io::stdin();
+            //
+            writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
+            //
+            self.init();
+            //
+            let buff = &mut Vec::new();
+            //
+            self.update(Event::Unsupported(Vec::new()), buff)?;
+            stdout.write_all(buff)?;
+            buff.clear();
+            stdout.flush()?;
+            //
+            let mut mouse = false;
+            //
+            for e in stdin.events() {
+                if let Ok(e) = e {
+                    if let Some(e) = match e {
+                        Event::Mouse(MouseEvent::Press(_, _, _)) => {
+                            mouse = true;
                             Some(e)
                         }
+                        Event::Mouse(MouseEvent::Release(_, _)) => {
+                            mouse = false;
+                            Some(e)
+                        }
+                        _ => {
+                            if mouse {
+                                None
+                            } else {
+                                Some(e)
+                            }
+                        }
+                    } {
+                        self.update(e, buff)?;
+                        stdout.write_all(buff)?;
+                        buff.clear();
+                        stdout.flush()?;
                     }
-                } {
-                    self.update(e, buff)?;
-                    stdout.write_all(buff)?;
-                    buff.clear();
-                    stdout.flush()?;
+                }
+                if !self.running() {
+                    break;
                 }
             }
-            if !self.running() {
-                break;
-            }
+            Ok(())
+        };
+        if let Err(e) = f() {
+            stdout.flush()?;
+            eprintln!("{}", e);
         }
         Ok(())
     }
