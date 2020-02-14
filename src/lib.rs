@@ -92,64 +92,70 @@ pub trait TerminalGameDynamic {
     fn running(&self) -> bool;
     fn fps(&self) -> f64;
     fn start(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut stdout = AlternateScreen::from(cursor::HideCursor::from(
-            MouseTerminal::from(std::io::stdout().into_raw_mode()?),
-        ));
-        let stdin = std::io::stdin();
-        //
-        let (tx, rx) = mpsc::channel();
-        //
-        thread::spawn(move || {
-            let mut mouse = false;
-            for e in stdin.events() {
-                if let Ok(e) = e {
-                    let e = match e {
-                        Event::Mouse(MouseEvent::Press(_, _, _)) => {
-                            mouse = true;
-                            Some(e)
-                        }
-                        Event::Mouse(MouseEvent::Release(_, _)) => {
-                            mouse = false;
-                            Some(e)
-                        }
-                        _ => {
-                            if mouse {
-                                None
-                            } else {
+        let mut f = || -> Result<(), Box<dyn Error>> {
+            let mut stdout = AlternateScreen::from(cursor::HideCursor::from(
+                MouseTerminal::from(std::io::stdout().into_raw_mode()?),
+            ));
+            let stdin = std::io::stdin();
+            //
+            let (tx, rx) = mpsc::channel();
+            //
+            thread::spawn(move || {
+                let mut mouse = false;
+                for e in stdin.events() {
+                    if let Ok(e) = e {
+                        let e = match e {
+                            Event::Mouse(MouseEvent::Press(_, _, _)) => {
+                                mouse = true;
                                 Some(e)
                             }
+                            Event::Mouse(MouseEvent::Release(_, _)) => {
+                                mouse = false;
+                                Some(e)
+                            }
+                            _ => {
+                                if mouse {
+                                    None
+                                } else {
+                                    Some(e)
+                                }
+                            }
+                        };
+                        if let Some(e) = e {
+                            tx.send(e).unwrap();
                         }
-                    };
-                    if let Some(e) = e {
-                        tx.send(e).unwrap();
                     }
                 }
-            }
-        });
-        //
-        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
-        //
-        self.init();
-        //
-        let buff = &mut Vec::new();
-        let mut syncer = Syncer::from_fps(self.fps());
-        //
-        while self.running() {
-            for e in rx.try_iter() {
-                self.input(e);
-            }
+            });
             //
-            self.update();
-            self.render(buff)?;
+            writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
             //
-            stdout.write_all(buff)?;
-            buff.clear();
+            self.init();
+            //
+            let buff = &mut Vec::new();
+            let mut syncer = Syncer::from_fps(self.fps());
+            //
+            while self.running() {
+                for e in rx.try_iter() {
+                    self.input(e);
+                }
+                //
+                self.update();
+                self.render(buff)?;
+                //
+                stdout.write_all(buff)?;
+                buff.clear();
+                stdout.flush()?;
+                //
+                syncer.sync();
+            }
+            writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
             stdout.flush()?;
-            //
-            syncer.sync();
+            Ok(())
+        };
+        if let Err(e) = f() {
+            println!("Game crashed!\n{}", e);
         }
-        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
-        stdout.flush()?;
         Ok(())
     }
 }
@@ -215,8 +221,6 @@ pub trait TerminalGameStatic {
         };
         if let Err(e) = f() {
             println!("Game crashed!\n{}", e);
-        } else {
-            println!("Hei fra static game!");
         }
         Ok(())
     }
