@@ -214,7 +214,7 @@ pub trait TerminalGameStatic {
             Ok(())
         };
         if let Err(e) = f() {
-            eprintln!("{}", e);
+            eprintln!("Game crashed!\n{}", e);
         } else {
             eprintln!("Hei fra static game!");
         }
