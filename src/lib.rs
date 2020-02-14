@@ -1,4 +1,5 @@
 use std::{
+    error::Error,
     io::Write,
     sync::mpsc,
     thread,
@@ -13,16 +14,16 @@ use termion::{
     screen::AlternateScreen,
 };
 
-pub fn col2fg_str<T: color::Color>(col: T) -> Vec<u8> {
+pub fn col2fg_str<T: color::Color>(col: T) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut ret = Vec::new();
-    write!(ret, "{}", color::Fg(col)).unwrap();
-    ret
+    write!(ret, "{}", color::Fg(col))?;
+    Ok(ret)
 }
 
-pub fn col2bg_str<T: color::Color>(col: T) -> Vec<u8> {
+pub fn col2bg_str<T: color::Color>(col: T) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut ret = Vec::new();
-    write!(ret, "{}", color::Bg(col)).unwrap();
-    ret
+    write!(ret, "{}", color::Bg(col))?;
+    Ok(ret)
 }
 
 pub struct EveryNSync {
@@ -87,12 +88,12 @@ pub trait TerminalGameDynamic {
     fn init(&mut self) {}
     fn input(&mut self, e: Event);
     fn update(&mut self);
-    fn render(&mut self, buff: &mut Vec<u8>);
+    fn render(&mut self, buff: &mut Vec<u8>) -> Result<(), Box<dyn Error>>;
     fn running(&self) -> bool;
     fn fps(&self) -> f64;
-    fn start(&mut self) {
+    fn start(&mut self) -> Result<(), Box<dyn Error>> {
         let mut stdout = AlternateScreen::from(cursor::HideCursor::from(
-            MouseTerminal::from(std::io::stdout().into_raw_mode().unwrap()),
+            MouseTerminal::from(std::io::stdout().into_raw_mode()?),
         ));
         let stdin = std::io::stdin();
         //
@@ -126,7 +127,7 @@ pub trait TerminalGameDynamic {
             }
         });
         //
-        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
+        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
         //
         self.init();
         //
@@ -139,39 +140,44 @@ pub trait TerminalGameDynamic {
             }
             //
             self.update();
-            self.render(buff);
+            self.render(buff)?;
             //
-            stdout.write_all(buff).unwrap();
+            stdout.write_all(buff)?;
             buff.clear();
-            stdout.flush().unwrap();
+            stdout.flush()?;
             //
             syncer.sync();
         }
-        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
-        stdout.flush().unwrap();
+        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
+        stdout.flush()?;
+        Ok(())
     }
 }
 
 pub trait TerminalGameStatic {
     fn init(&mut self) {}
-    fn update(&mut self, e: Event, buff: &mut Vec<u8>);
+    fn update(
+        &mut self,
+        e: Event,
+        buff: &mut Vec<u8>,
+    ) -> Result<(), Box<dyn Error>>;
     fn running(&self) -> bool;
-    fn start(&mut self) {
+    fn start(&mut self) -> Result<(), Box<dyn Error>> {
         let mut stdout = AlternateScreen::from(cursor::HideCursor::from(
-            MouseTerminal::from(std::io::stdout().into_raw_mode().unwrap()),
+            MouseTerminal::from(std::io::stdout().into_raw_mode()?),
         ));
         let stdin = std::io::stdin();
         //
-        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
+        writeln!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
         //
         self.init();
         //
         let buff = &mut Vec::new();
         //
-        self.update(Event::Unsupported(Vec::new()), buff);
-        stdout.write_all(buff).unwrap();
+        self.update(Event::Unsupported(Vec::new()), buff)?;
+        stdout.write_all(buff)?;
         buff.clear();
-        stdout.flush().unwrap();
+        stdout.flush()?;
         //
         let mut mouse = false;
         //
@@ -194,22 +200,24 @@ pub trait TerminalGameStatic {
                         }
                     }
                 } {
-                    self.update(e, buff);
-                    stdout.write_all(buff).unwrap();
+                    self.update(e, buff)?;
+                    stdout.write_all(buff)?;
                     buff.clear();
-                    stdout.flush().unwrap();
+                    stdout.flush()?;
                 }
             }
             if !self.running() {
                 break;
             }
         }
+        Ok(())
     }
 }
 
 pub trait GameObject {
     fn input(&mut self, _: &Event) {}
     fn update(&mut self) {}
-    fn render(&mut self, _: &mut Vec<u8>) {}
+    fn render(&mut self, _: &mut Vec<u8>) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 }
-
